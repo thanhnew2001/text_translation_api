@@ -1,0 +1,7 @@
+flask
+python-dotenv
+flask-cors 
+transformers
+hf_hub_ctranslate2
+
+
