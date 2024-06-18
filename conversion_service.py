@@ -121,7 +121,7 @@ def process_file(file_key, source_lang, target_lang, unique_id, recipient_email)
     # Send email notification with the download link
     email_subject = "Your translated file is ready!"
     email_body = f"Your translated file is ready. You can download it from: {presigned_url}"
-    send_secure_email(email_subject, email_body, recipient_email, "your-email@example.com", "your-email-password")
+    send_secure_email(email_subject, email_body, recipient_email, EMAIL, EMAIL_PASSWORD)
     print(f"Email sent to {recipient_email}")
 
 # Function to upload file to S3
