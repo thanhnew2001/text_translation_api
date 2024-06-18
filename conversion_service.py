@@ -18,6 +18,8 @@ load_dotenv()
 AWS_REGION = os.getenv("AWS_REGION")
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+EMAIL = os.getenv("EMAIL")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 sqs = boto3.client('sqs', region_name=AWS_REGION)
 s3 = boto3.client('s3', region_name=AWS_REGION)
 
@@ -114,7 +116,7 @@ def process_file(file_content, source_lang, target_lang, unique_id, recipient_em
     # Send email notification with the download link
     email_subject = "Your translated file is ready!"
     email_body = f"Your translated file is ready. You can download it from: {presigned_url}"
-    send_secure_email(email_subject, email_body, recipient_email, "your-email@example.com", "your-email-password")
+    send_secure_email(email_subject, email_body, recipient_email, EMAIL, EMAIL_PASSWORD)
     print(f"Email sent to {recipient_email}")
 
 # Function to upload file to S3
