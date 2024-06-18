@@ -18,6 +18,8 @@ load_dotenv()
 AWS_REGION = os.getenv("AWS_REGION")
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+EMAIL = os.getenv("EMAIL")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 sqs = boto3.client('sqs', region_name=AWS_REGION)
 s3 = boto3.client('s3', region_name=AWS_REGION)
 
