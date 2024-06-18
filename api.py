@@ -5,8 +5,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
-import uuid 
-
+import uuid
 
 # Load environment variables
 load_dotenv()
@@ -23,7 +22,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # AWS configuration
 AWS_REGION = os.getenv("AWS_REGION")
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
-s3 = boto3.client('s3', region_name=AWS_REGION)
 sqs = boto3.client('sqs', region_name=AWS_REGION)
 
 # Allowed extensions
@@ -48,12 +46,16 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
+        # Read the file content
+        with open(filepath, 'r') as f:
+            file_content = f.read()
+        
         # Generate a unique ID for this file
         unique_id = str(uuid.uuid4())
         
-        # Send a message to SQS with the file details
+        # Send a message to SQS with the file content and details
         message = {
-            'file_key': filename,
+            'file_content': file_content,
             'unique_id': unique_id,
             'source_lang': request.form.get('source_lang', 'en'),
             'target_lang': request.form.get('target_lang', 'vi'),
