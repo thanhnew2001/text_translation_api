@@ -18,8 +18,6 @@ load_dotenv()
 AWS_REGION = os.getenv("AWS_REGION")
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
-EMAIL = os.getenv("EMAIL")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 sqs = boto3.client('sqs', region_name=AWS_REGION)
 s3 = boto3.client('s3', region_name=AWS_REGION)
 
@@ -104,13 +102,8 @@ def translate_with_timing(text, source_lang, target_lang):
     return translated_text
 
 # File processing functions
-def process_file(file_key, source_lang, target_lang, unique_id, recipient_email):
-    download_path = f"/tmp/{file_key}"
-    s3.download_file(S3_BUCKET_NAME, file_key, download_path)
-
-    with open(download_path, "r") as file:
-        sentences = sent_tokenize(file.read())
-
+def process_file(file_content, source_lang, target_lang, unique_id, recipient_email):
+    sentences = sent_tokenize(file_content)
     translated_sentences = [translate_with_timing(sentence, source_lang, target_lang) for sentence in sentences]
     translated_file_path = f"/tmp/translated_{unique_id}.txt"
     with open(translated_file_path, "w") as file:
@@ -121,7 +114,7 @@ def process_file(file_key, source_lang, target_lang, unique_id, recipient_email)
     # Send email notification with the download link
     email_subject = "Your translated file is ready!"
     email_body = f"Your translated file is ready. You can download it from: {presigned_url}"
-    send_secure_email(email_subject, email_body, recipient_email, EMAIL, EMAIL_PASSWORD)
+    send_secure_email(email_subject, email_body, recipient_email, "your-email@example.com", "your-email-password")
     print(f"Email sent to {recipient_email}")
 
 # Function to upload file to S3
@@ -156,12 +149,12 @@ def process_sqs_message():
         time.sleep(2)
         message_body = read_message_from_sqs()
         if message_body:
-            file_key = message_body['file_key']
+            file_content = message_body['file_content']
             source_lang = message_body['source_lang']
             target_lang = message_body['target_lang']
             unique_id = message_body['unique_id']
             recipient_email = message_body['recipient_email']
-            process_file(file_key, source_lang, target_lang, unique_id, recipient_email)
+            process_file(file_content, source_lang, target_lang, unique_id, recipient_email)
 
 # Start the conversion service
 if __name__ == "__main__":
