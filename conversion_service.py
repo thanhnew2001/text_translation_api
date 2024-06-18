@@ -148,15 +148,19 @@ def read_message_from_sqs():
 
 def process_sqs_message():
     while True:
-        time.sleep(2)
-        message_body = read_message_from_sqs()
-        if message_body:
-            file_content = message_body['file_content']
-            source_lang = message_body['source_lang']
-            target_lang = message_body['target_lang']
-            unique_id = message_body['unique_id']
-            recipient_email = message_body['recipient_email']
-            process_file(file_content, source_lang, target_lang, unique_id, recipient_email)
+        try:
+            time.sleep(2)
+            message_body = read_message_from_sqs()
+            if message_body:
+                file_content = message_body['file_content']
+                source_lang = message_body['source_lang']
+                target_lang = message_body['target_lang']
+                unique_id = message_body['unique_id']
+                recipient_email = message_body['recipient_email']
+                process_file(file_content, source_lang, target_lang, unique_id, recipient_email)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            
 
 # Start the conversion service
 if __name__ == "__main__":
