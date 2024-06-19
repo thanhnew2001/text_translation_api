@@ -53,7 +53,11 @@ def upload_file():
         # Generate a unique ID for this file
         unique_id = str(uuid.uuid4())
 <<<<<<< HEAD
+<<<<<<< HEAD
         s3_object_key = f"{filename.rsplit('.', 1)[0]}_{unique_id}.{filename.rsplit('.', 1)[1]}"
+=======
+        s3_object_key = f"{unique_id}/{filename}"
+>>>>>>> parent of 4aaa5ec (remain file name)
         
         # Upload the file to S3
         if upload_file_to_s3(filepath, S3_BUCKET_NAME, s3_object_key):
@@ -63,7 +67,8 @@ def upload_file():
                 's3_key': s3_object_key,
                 'unique_id': unique_id,
                 'source_lang': request.form.get('source_lang', 'en'),
-                'target_lang': request.form.get('target_lang', 'vi')
+                'target_lang': request.form.get('target_lang', 'vi'),
+                'recipient_email': request.form.get('recipient_email')
             }
             
             sqs.send_message(
