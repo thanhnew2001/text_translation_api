@@ -97,7 +97,40 @@ def translate_with_timing(text, source_lang, target_lang):
         translated_text = translate_text(text, source_lang, target_lang)
     return translated_text
 
-# File processing functions
+# # File processing functions
+# def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id):
+#     # Download the file from S3
+#     local_file_path = f"/tmp/{s3_key.split('/')[-1]}"
+#     s3.download_file(s3_bucket, s3_key, local_file_path)
+
+#     # Read the file content
+#     with open(local_file_path, 'r', encoding='utf-8') as file:
+#         file_content = file.read()
+
+#     # Split the content into sentences
+#     sentences = sent_tokenize(file_content)
+
+#     # Translate each sentence, handling long sequences
+#     translated_sentences = []
+#     for sentence in sentences:
+#         print("Translating: "+sentence)
+#         if len(tokenizer.tokenize(sentence)) > 400:
+#             sentence_chunks = split_text(sentence, 400)
+#             translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in sentence_chunks]
+#             translated_sentences.append(' '.join(translated_chunks))
+#         else:
+#             translated_sentences.append(translate_with_timing(sentence, source_lang, target_lang))
+#     translated_content = ' '.join(translated_sentences)
+
+#     # Save the translated content to a new file
+#     translated_file_name = f"{s3_key.rsplit('.', 1)[0]}_{unique_id}_translated.txt"
+#     translated_file_path = f"/tmp/{translated_file_name}"
+#     with open(translated_file_path, 'w', encoding='utf-8') as file:
+#         file.write(translated_content)
+
+#     # Upload the translated file back to S3
+#     s3.upload_file(translated_file_path, s3_bucket, translated_file_name)
+
 def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id):
     # Download the file from S3
     local_file_path = f"/tmp/{s3_key.split('/')[-1]}"
@@ -105,22 +138,25 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id):
 
     # Read the file content
     with open(local_file_path, 'r', encoding='utf-8') as file:
-        file_content = file.read()
+        lines = file.readlines()
 
-    # Split the content into sentences
-    sentences = sent_tokenize(file_content)
-
-    # Translate each sentence, handling long sequences
-    translated_sentences = []
-    for sentence in sentences:
-        print("Translating: "+sentence)
-        if len(tokenizer.tokenize(sentence)) > 400:
-            sentence_chunks = split_text(sentence, 400)
-            translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in sentence_chunks]
-            translated_sentences.append(' '.join(translated_chunks))
+    # Translate each non-empty line, preserving line breaks
+    translated_lines = []
+    for line in lines:
+        if not line.strip():
+            # Preserve empty lines
+            translated_lines.append("\n")
         else:
-            translated_sentences.append(translate_with_timing(sentence, source_lang, target_lang))
-    translated_content = ' '.join(translated_sentences)
+            # Translate non-empty lines
+            if len(tokenizer.tokenize(line)) > 512:
+                line_chunks = split_text(line, 512)
+                translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in line_chunks]
+                translated_lines.extend(translated_chunks)
+            else:
+                translated_lines.append(translate_with_timing(line, source_lang, target_lang))
+    
+    # Combine translated lines into content
+    translated_content = "".join(translated_lines)
 
     # Save the translated content to a new file
     translated_file_name = f"{s3_key.rsplit('.', 1)[0]}_{unique_id}_translated.txt"
@@ -130,6 +166,12 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id):
 
     # Upload the translated file back to S3
     s3.upload_file(translated_file_path, s3_bucket, translated_file_name)
+
+    # Move the original file to the translated files directory
+    os.makedirs(TRANSLATED_FILES_DIR, exist_ok=True)
+    os.rename(local_file_path, os.path.join(TRANSLATED_FILES_DIR, f"{s3_key.split('/')[-1]}_{unique_id}.txt"))
+
+
 
 def process_sqs_message():
     while True:
