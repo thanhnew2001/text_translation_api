@@ -9,6 +9,7 @@ from hf_hub_ctranslate2 import MultiLingualTranslatorCT2fromHfHub, TranslatorCT2
 from transformers import AutoTokenizer
 from dotenv import load_dotenv
 from sendmail import send_secure_email  # Ensure this is your function for sending emails
+import re
 
 # Load environment variables
 load_dotenv()
