@@ -149,7 +149,7 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipien
             translated_lines.append("\n\n")
         else:
             # Translate non-empty lines
-            if len(tokenizer.tokenize(line)) > 512:
+            if len(line) > 512:
                 line_chunks = split_text(line, 512)
                 translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in line_chunks]
                 translated_lines.extend(translated_chunks)
