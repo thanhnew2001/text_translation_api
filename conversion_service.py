@@ -127,21 +127,14 @@ def remove_line(file_path):
         lines = file.readlines()
 
     processed_lines = []
-    i = 0
-    while i < len(lines):
-        line = lines[i].rstrip()
-        if line == "":
-            processed_lines.append(line)
-            i += 1
-            continue
-
-        next_line_is_blank = (i + 1 < len(lines)) and (lines[i + 1].strip() == "")
-        if next_line_is_blank:
-            processed_lines.append(line)
+    for i in range(len(lines)):
+        if lines[i].strip() == "":
+            processed_lines.append(lines[i])
         else:
-            processed_lines.append(line + " ")
-
-        i += 1
+            if i + 1 < len(lines) and lines[i + 1].strip() == "":
+                processed_lines.append(lines[i])
+            else:
+                processed_lines.append(lines[i].rstrip() + " ")
 
     # Join the processed lines into a single string
     processed_content = "".join(processed_lines)
