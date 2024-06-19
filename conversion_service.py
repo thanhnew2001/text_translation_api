@@ -114,6 +114,7 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipien
     # Translate each non-empty line, preserving line breaks
     translated_lines = []
     for line in lines:
+        print("Translating ..."+line)
         if not line.strip():
             # Preserve empty lines
             translated_lines.append("\n\n")
