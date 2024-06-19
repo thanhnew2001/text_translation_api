@@ -54,6 +54,13 @@ else:
 
 print(f"Model and tokenizer have been saved to '{model_dir}'")
 
+# Function to split text into chunks
+def split_text(text, max_length):
+    tokens = tokenizer.tokenize(text)
+    token_chunks = [tokens[i:i + max_length] for i in range(0, len(tokens), max_length)]
+    text_chunks = [tokenizer.convert_tokens_to_string(chunk) for chunk in token_chunks]
+    return text_chunks
+
 # Translation functions
 def translate_text(sentences, src_lang, tgt_lang):
     outputs = model_m2m.generate([sentences], src_lang=[src_lang], tgt_lang=[tgt_lang])
@@ -103,8 +110,15 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id):
     # Split the content into sentences
     sentences = sent_tokenize(file_content)
 
-    # Translate each sentence
-    translated_sentences = [translate_with_timing(sentence, source_lang, target_lang) for sentence in sentences]
+    # Translate each sentence, handling long sequences
+    translated_sentences = []
+    for sentence in sentences:
+        if len(tokenizer.tokenize(sentence)) > 512:
+            sentence_chunks = split_text(sentence, 512)
+            translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in sentence_chunks]
+            translated_sentences.append(' '.join(translated_chunks))
+        else:
+            translated_sentences.append(translate_with_timing(sentence, source_lang, target_lang))
     translated_content = ' '.join(translated_sentences)
 
     # Save the translated content to a new file
