@@ -143,8 +143,8 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipien
     # Send email notification with the download link
     email_subject = "Your book is ready!"
     email_body = f"Your processed book is ready. You can download it from: {presigned_url} within 7 days"
-    send_secure_email(email_subject, email_body, recipient_email, EMAIL, EMAIL_PASSWORD)
-    print(f"Email sent to {recipient_email}")
+    # send_secure_email(email_subject, email_body, recipient_email, EMAIL, EMAIL_PASSWORD)
+    # print(f"Email sent to {recipient_email}")
 
 
 def upload_file_to_s3(file_name, bucket_name, object_name=None):
