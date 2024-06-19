@@ -21,9 +21,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # AWS configuration
 AWS_REGION = os.getenv("AWS_REGION")
-S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
-s3 = boto3.client('s3', region_name=AWS_REGION)
 sqs = boto3.client('sqs', region_name=AWS_REGION)
 
 # Allowed extensions
@@ -31,14 +29,6 @@ ALLOWED_EXTENSIONS = {'txt'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def upload_file_to_s3(file_path, bucket_name, object_name):
-    try:
-        s3.upload_file(file_path, bucket_name, object_name)
-        return True
-    except Exception as e:
-        print(f"Error uploading file to S3: {e}")
-        return False
 
 # Flask routes
 @app.route("/upload", methods=["POST"])
@@ -56,8 +46,13 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
+        # Read the file content
+        with open(filepath, 'r') as f:
+            file_content = f.read()
+        
         # Generate a unique ID for this file
         unique_id = str(uuid.uuid4())
+<<<<<<< HEAD
         s3_object_key = f"{filename.rsplit('.', 1)[0]}_{unique_id}.{filename.rsplit('.', 1)[1]}"
         
         # Upload the file to S3
@@ -79,6 +74,24 @@ def upload_file():
             return jsonify({"message": "File uploaded successfully and message sent to queue"}), 200
         else:
             return jsonify({"error": "Failed to upload file to S3"}), 500
+=======
+        
+        # Send a message to SQS with the file content and details
+        message = {
+            'file_content': file_content,
+            'unique_id': unique_id,
+            'source_lang': request.form.get('source_lang', 'en'),
+            'target_lang': request.form.get('target_lang', 'vi'),
+            'recipient_email': request.form.get('recipient_email')
+        }
+        
+        sqs.send_message(
+            QueueUrl=SQS_QUEUE_URL,
+            MessageBody=json.dumps(message)
+        )
+        
+        return jsonify({"message": "File uploaded successfully and message sent to queue"}), 200
+>>>>>>> parent of 52792a4 (upload file to s3)
 
     return jsonify({"error": "File type not allowed"}), 400
 
