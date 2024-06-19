@@ -68,7 +68,8 @@ def upload_file():
                 's3_key': s3_object_key,
                 'unique_id': unique_id,
                 'source_lang': request.form.get('source_lang', 'en'),
-                'target_lang': request.form.get('target_lang', 'vi')
+                'target_lang': request.form.get('target_lang', 'vi'),
+                'recipient_email': request.form.get('recipient_email', '')
             }
             
             sqs.send_message(

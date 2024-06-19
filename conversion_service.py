@@ -8,6 +8,7 @@ from nltk.tokenize import sent_tokenize
 from hf_hub_ctranslate2 import MultiLingualTranslatorCT2fromHfHub, TranslatorCT2fromHfHub
 from transformers import AutoTokenizer
 from dotenv import load_dotenv
+from sendmail import send_secure_email  # Ensure this is your function for sending emails
 
 # Load environment variables
 load_dotenv()
@@ -16,6 +17,8 @@ load_dotenv()
 AWS_REGION = os.getenv("AWS_REGION")
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+EMAIL = os.getenv("EMAIL")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 sqs = boto3.client('sqs', region_name=AWS_REGION)
 s3 = boto3.client('s3', region_name=AWS_REGION)
 
@@ -97,41 +100,9 @@ def translate_with_timing(text, source_lang, target_lang):
         translated_text = translate_text(text, source_lang, target_lang)
     return translated_text
 
-# # File processing functions
-# def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id):
-#     # Download the file from S3
-#     local_file_path = f"/tmp/{s3_key.split('/')[-1]}"
-#     s3.download_file(s3_bucket, s3_key, local_file_path)
 
-#     # Read the file content
-#     with open(local_file_path, 'r', encoding='utf-8') as file:
-#         file_content = file.read()
 
-#     # Split the content into sentences
-#     sentences = sent_tokenize(file_content)
-
-#     # Translate each sentence, handling long sequences
-#     translated_sentences = []
-#     for sentence in sentences:
-#         print("Translating: "+sentence)
-#         if len(tokenizer.tokenize(sentence)) > 400:
-#             sentence_chunks = split_text(sentence, 400)
-#             translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in sentence_chunks]
-#             translated_sentences.append(' '.join(translated_chunks))
-#         else:
-#             translated_sentences.append(translate_with_timing(sentence, source_lang, target_lang))
-#     translated_content = ' '.join(translated_sentences)
-
-#     # Save the translated content to a new file
-#     translated_file_name = f"{s3_key.rsplit('.', 1)[0]}_{unique_id}_translated.txt"
-#     translated_file_path = f"/tmp/{translated_file_name}"
-#     with open(translated_file_path, 'w', encoding='utf-8') as file:
-#         file.write(translated_content)
-
-#     # Upload the translated file back to S3
-#     s3.upload_file(translated_file_path, s3_bucket, translated_file_name)
-
-def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id):
+def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipient_email):
     # Download the file from S3
     local_file_path = f"/tmp/{s3_key.split('/')[-1]}"
     s3.download_file(s3_bucket, s3_key, local_file_path)
@@ -167,11 +138,30 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id):
     # Upload the translated file back to S3
     s3.upload_file(translated_file_path, s3_bucket, translated_file_name)
 
-    # Move the original file to the translated files directory
-    os.makedirs(TRANSLATED_FILES_DIR, exist_ok=True)
-    os.rename(local_file_path, os.path.join(TRANSLATED_FILES_DIR, f"{s3_key.split('/')[-1]}_{unique_id}.txt"))
+    presigned_url = upload_file_to_s3(translated_file_path, s3_bucket, translated_file_name)
+
+    # Send email notification with the download link
+    email_subject = "Your book is ready!"
+    email_body = f"Your processed book is ready. You can download it from: {presigned_url} within 7 days"
+    send_secure_email(email_subject, email_body, recipient_email, EMAIL, EMAIL_PASSWORD)
+    print(f"Email sent to {recipient_email}")
 
 
+def upload_file_to_s3(file_name, bucket_name, object_name=None):
+    if object_name is None:
+        object_name = file_name
+    s3_client = boto3.client('s3')
+    try:
+        s3_client.upload_file(file_name, bucket_name, object_name)
+        # Generate a presigned URL for the uploaded file
+        presigned_url = s3_client.generate_presigned_url('get_object',
+                                                         Params={'Bucket': bucket_name,
+                                                                 'Key': object_name},
+                                                         ExpiresIn=3600*24*7) # URL expires in 7 days
+        return presigned_url
+    except Exception:
+        print("Credentials not available")
+        return None
 
 def process_sqs_message():
     while True:
@@ -184,7 +174,8 @@ def process_sqs_message():
                 source_lang = message_body['source_lang']
                 target_lang = message_body['target_lang']
                 unique_id = message_body['unique_id']
-                process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id)
+                recipient_email = message_body['recipient_email']
+                process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipient_email)
         except Exception as e:
             print(f"An error occurred: {e}")
 
