@@ -164,7 +164,7 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipien
     # Translate each non-empty line, preserving line breaks
     translated_lines = []
     for line in lines:
-        print("Translating ..."+line)
+        #print("Translating ..."+line)
         if not line.strip():
             # Preserve empty lines
             translated_lines.append("\n\n")
@@ -172,6 +172,7 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipien
             # Translate non-empty lines
             if len(line) > 512:
                 line_chunks = split_text(line, 512)
+                print(line_chunks)
                 translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in line_chunks]
                 translated_lines.extend(translated_chunks)
             else:
