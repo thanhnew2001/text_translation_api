@@ -101,11 +101,40 @@ def translate_with_timing(text, source_lang, target_lang):
     return translated_text
 
 
+def remove_line(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+
+    processed_lines = []
+    i = 0
+    while i < len(lines):
+        line = lines[i].rstrip()
+        if line == "":
+            processed_lines.append(line)
+            i += 1
+            continue
+
+        next_line_is_blank = (i + 1 < len(lines)) and (lines[i + 1].strip() == "")
+        if next_line_is_blank:
+            processed_lines.append(line)
+        else:
+            processed_lines.append(line + " ")
+
+        i += 1
+
+    # Join the processed lines into a single string
+    processed_content = "".join(processed_lines)
+
+    # Write the processed content back to the file
+    with open(file_path, 'w', encoding='utf-8') as file:
+        file.write(processed_content)
 
 def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipient_email):
     # Download the file from S3
     local_file_path = f"/tmp/{s3_key.split('/')[-1]}"
     s3.download_file(s3_bucket, s3_key, local_file_path)
+
+    remove_line(local_file_path)
 
     # Read the file content
     with open(local_file_path, 'r', encoding='utf-8') as file:
