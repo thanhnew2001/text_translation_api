@@ -216,6 +216,7 @@ def process_sqs_message():
                 target_lang = message_body['target_lang']
                 unique_id = message_body['unique_id']
                 recipient_email = message_body['recipient_email']
+                print("Reading queue. Found translation task "+s3_key)
                 process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipient_email)
         except Exception as e:
             print(f"An error occurred: {e}")
