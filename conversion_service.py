@@ -62,7 +62,7 @@ def split_text(text, max_length):
     tokens = tokenizer.tokenize(text)
     token_chunks = [tokens[i:i + max_length] for i in range(0, len(tokens), max_length)]
     text_chunks = [tokenizer.convert_tokens_to_string(chunk) for chunk in token_chunks]
-    print("text chunks "+text_chunks)
+    print(text_chunks)
     return text_chunks
 
 # Translation functions
