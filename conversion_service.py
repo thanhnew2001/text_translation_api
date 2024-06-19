@@ -57,12 +57,24 @@ else:
 
 print(f"Model and tokenizer have been saved to '{model_dir}'")
 
-# Function to split text into chunks
 def split_text(text, max_length):
-    tokens = tokenizer.tokenize(text)
-    token_chunks = [tokens[i:i + max_length] for i in range(0, len(tokens), max_length)]
+    sentences = text.split('. ')
+    token_chunks = []
+    current_chunk = []
+
+    for sentence in sentences:
+        sentence = sentence.strip()
+        tokens = tokenizer.tokenize(sentence + ".")  # Add period back to the sentence
+        if len(current_chunk) + len(tokens) > max_length:
+            token_chunks.append(current_chunk)
+            current_chunk = tokens
+        else:
+            current_chunk.extend(tokens)
+
+    if current_chunk:
+        token_chunks.append(current_chunk)
+
     text_chunks = [tokenizer.convert_tokens_to_string(chunk) for chunk in token_chunks]
-    print(text_chunks)
     return text_chunks
 
 # Translation functions
