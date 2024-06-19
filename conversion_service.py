@@ -113,6 +113,7 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id):
     # Translate each sentence, handling long sequences
     translated_sentences = []
     for sentence in sentences:
+        print("Translating: "+sentence)
         if len(tokenizer.tokenize(sentence)) > 400:
             sentence_chunks = split_text(sentence, 400)
             translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in sentence_chunks]
