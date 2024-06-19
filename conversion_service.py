@@ -150,7 +150,7 @@ def remove_line(file_path):
     with open(file_path, 'w', encoding='utf-8') as file:
         file.write(processed_content)
 
-def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipient_email):
+def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipient_email):
     # Download the file from S3
     local_file_path = f"/tmp/{s3_key.split('/')[-1]}"
     s3.download_file(s3_bucket, s3_key, local_file_path)
@@ -164,19 +164,17 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipien
     # Translate each non-empty line, preserving line breaks
     translated_lines = []
     for line in lines:
-        #print("Translating ..."+line)
         if not line.strip():
             # Preserve empty lines
-            translated_lines.append("\n\n")
+            translated_lines.append("\n")
         else:
             # Translate non-empty lines
             if len(line) > 512:
                 line_chunks = split_text(line, 512)
-                print(line_chunks)
                 translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in line_chunks]
                 translated_lines.extend(translated_chunks)
             else:
-                translated_lines.append(" " +translate_with_timing(line, source_lang, target_lang))
+                translated_lines.append(translate_with_timing(line, source_lang, target_lang) + "\n")
     
     # Combine translated lines into content
     translated_content = "".join(translated_lines)
@@ -188,8 +186,6 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipien
         file.write(translated_content)
 
     # Upload the translated file back to S3
-    s3.upload_file(translated_file_path, s3_bucket, translated_file_name)
-
     presigned_url = upload_file_to_s3(translated_file_path, s3_bucket, translated_file_name)
 
     # Send email notification with the download link
