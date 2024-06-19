@@ -116,7 +116,7 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipien
     for line in lines:
         if not line.strip():
             # Preserve empty lines
-            translated_lines.append("\n")
+            translated_lines.append("\n\n")
         else:
             # Translate non-empty lines
             if len(tokenizer.tokenize(line)) > 512:
@@ -124,7 +124,7 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id,recipien
                 translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in line_chunks]
                 translated_lines.extend(translated_chunks)
             else:
-                translated_lines.append(translate_with_timing(line, source_lang, target_lang))
+                translated_lines.append(" " +translate_with_timing(line, source_lang, target_lang))
     
     # Combine translated lines into content
     translated_content = "".join(translated_lines)
