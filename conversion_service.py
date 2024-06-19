@@ -57,25 +57,32 @@ else:
 
 print(f"Model and tokenizer have been saved to '{model_dir}'")
 
+
 def split_text(text, max_length):
-    sentences = text.split('. ')
-    token_chunks = []
-    current_chunk = []
+    # Split text by sentences based on delimiters
+    sentences = re.split(r'(?<=\.|,|;|"|!|\?)\s+', text)
+    
+    chunks = []
+    current_chunk = ""
+    current_length = 0
 
     for sentence in sentences:
-        sentence = sentence.strip()
-        tokens = tokenizer.tokenize(sentence + ".")  # Add period back to the sentence
-        if len(current_chunk) + len(tokens) > max_length:
-            token_chunks.append(current_chunk)
-            current_chunk = tokens
+        sentence_length = len(sentence)
+        
+        # Check if adding this sentence would exceed the max length
+        if current_length + sentence_length + 1 > max_length:  # +1 for space or delimiter
+            chunks.append(current_chunk.strip())
+            current_chunk = sentence
+            current_length = sentence_length
         else:
-            current_chunk.extend(tokens)
+            current_chunk += (" " + sentence) if current_chunk else sentence
+            current_length += sentence_length + 1  # +1 for space or delimiter
 
+    # Add the last chunk
     if current_chunk:
-        token_chunks.append(current_chunk)
+        chunks.append(current_chunk.strip())
 
-    text_chunks = [tokenizer.convert_tokens_to_string(chunk) for chunk in token_chunks]
-    return text_chunks
+    return chunks
 
 # Translation functions
 def translate_text(sentences, src_lang, tgt_lang):
