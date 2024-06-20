@@ -34,6 +34,7 @@ def allowed_file(filename):
 
 def upload_file_to_s3(file_path, bucket_name, object_name):
     try:
+        print(file_path)
         s3.upload_file(file_path, bucket_name, object_name)
         return True
     except Exception as e:
