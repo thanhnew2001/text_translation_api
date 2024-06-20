@@ -10,6 +10,7 @@ from transformers import AutoTokenizer
 from dotenv import load_dotenv
 from sendmail import send_secure_email  # Ensure this is your function for sending emails
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Load environment variables
 load_dotenv()
@@ -205,41 +206,26 @@ def upload_file_to_s3(file_name, bucket_name, object_name=None):
         return None
 
 def process_sqs_message():
-    while True:
-        try:
-            time.sleep(2)
-            message_body = read_message_from_sqs()
-            if message_body:
-                s3_bucket = message_body['s3_bucket']
-                s3_key = message_body['s3_key']
-                source_lang = message_body['source_lang']
-                target_lang = message_body['target_lang']
-                unique_id = message_body['unique_id']
-                recipient_email = message_body['recipient_email']
-                print("Reading queue. Found translation task "+s3_key)
-                process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipient_email)
-        except Exception as e:
-            print(f"An error occurred: {e}")
+    def process_single_message(message_body):
+        s3_bucket = message_body['s3_bucket']
+        s3_key = message_body['s3_key']
+        source_lang = message_body['source_lang']
+        target_lang = message_body['target_lang']
+        unique_id = message_body['unique_id']
+        recipient_email = message_body['recipient_email']
+        print("Reading queue. Found translation task " + s3_key)
+        process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipient_email)
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        while True:
+            try:
+                time.sleep(2)
+                message_body = read_message_from_sqs()
+                if message_body:
+                    future = executor.submit(process_single_message, message_body)
+            except Exception as e:
+                print(f"An error occurred: {e}")
 
 # Function to read message from SQS
 def read_message_from_sqs():
-    response = sqs.receive_message(
-        QueueUrl=SQS_QUEUE_URL,
-        AttributeNames=['All'],
-        MaxNumberOfMessages=1,
-        MessageAttributeNames=['All'],
-        VisibilityTimeout=30,
-        WaitTimeSeconds=0
-    )
-
-    if 'Messages' in response:
-        for message in response['Messages']:
-            body = message['Body']
-            receipt_handle = message['ReceiptHandle']
-            sqs.delete_message(QueueUrl=SQS_QUEUE_URL, ReceiptHandle=receipt_handle)
-            return json.loads(body)
-    return None
-
-# Start the conversion service
-if __name__ == "__main__":
-    process_sqs_message()
+    response = sqs.receive
