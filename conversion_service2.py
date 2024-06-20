@@ -10,6 +10,7 @@ from transformers import AutoTokenizer
 from dotenv import load_dotenv
 from sendmail import send_secure_email  # Ensure this is your function for sending emails
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 # Load environment variables
 load_dotenv()
@@ -156,19 +157,28 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipie
 
     # Translate each non-empty line, preserving line breaks
     translated_lines = []
+    line_chunks = []
+    
+    # Split lines into chunks
     for line in lines:
         if not line.strip():
-            # Preserve empty lines
             translated_lines.append("\n")
         else:
-            # Translate non-empty lines
             if len(line) > 512:
-                line_chunks = split_text(line, 512)
-                translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in line_chunks]
-                translated_lines.extend(translated_chunks)
+                line_chunks.extend(split_text(line, 512))
             else:
-                translated_lines.append(translate_with_timing(line, source_lang, target_lang) + "\n")
+                line_chunks.append(line)
     
+    # Define the translation function for each chunk
+    def translate_chunk(chunk):
+        return translate_with_timing(chunk, source_lang, target_lang) + "\n"
+
+    # Use a thread pool to translate chunks in parallel
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        future_to_chunk = {executor.submit(translate_chunk, chunk): chunk for chunk in line_chunks}
+        for future in future_to_chunk:
+            translated_lines.append(future.result())
+
     # Combine translated lines into content
     translated_content = "".join(translated_lines)
 
@@ -216,7 +226,7 @@ def process_sqs_message():
                 target_lang = message_body['target_lang']
                 unique_id = message_body['unique_id']
                 recipient_email = message_body['recipient_email']
-                print("Reading queue. Found translation task "+s3_key)
+                print("Reading queue. Found translation task " + s3_key)
                 process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipient_email)
         except Exception as e:
             print(f"An error occurred: {e}")
