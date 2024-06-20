@@ -139,7 +139,7 @@
             event.preventDefault();
             
             const formData = new FormData(this);
-            fetch('https://api.booktranslate.uk/upload', {
+            fetch('upload', {
                 method: 'POST',
                 body: formData
             })
