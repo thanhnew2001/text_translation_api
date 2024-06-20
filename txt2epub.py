@@ -35,4 +35,4 @@ def convert_txt_to_epub(txt_path, epub_path):
     print(f"EPUB file saved at {epub_path}")
 
 # Example usage
-convert_txt_to_epub('siam.txt', 'siam.epub')
+convert_txt_to_epub('canon.txt', 'canon.epub')

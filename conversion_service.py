@@ -162,7 +162,7 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipie
     # Split lines into chunks
     for line in lines:
         if not line.strip():
-            translated_lines.append("\n")
+            translated_lines.append("\n\n")
         else:
             if len(line) > 512:
                 line_chunks.extend(split_text(line, 512))
