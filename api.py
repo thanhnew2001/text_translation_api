@@ -1,7 +1,7 @@
 import os
 import json
 import boto3
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response, send_file, render_template, Response, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
@@ -11,7 +11,7 @@ import uuid
 load_dotenv()
 
 # Flask app setup
-app = Flask(__name__)
+app = Flask(__name__,  static_url_path='/static', static_folder='static')
 CORS(app)  # Enable CORS for all routes
 
 # Directory where files are saved
@@ -39,6 +39,10 @@ def upload_file_to_s3(file_path, bucket_name, object_name):
     except Exception as e:
         print(f"Error uploading file to S3: {e}")
         return False
+
+@app.route('/')
+def serve_index():
+    return send_from_directory('static', 'index.html')
 
 # Flask routes
 @app.route("/upload", methods=["POST"])
