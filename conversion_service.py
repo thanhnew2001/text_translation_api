@@ -10,7 +10,7 @@ from transformers import AutoTokenizer
 from dotenv import load_dotenv
 from sendmail import send_secure_email  # Ensure this is your function for sending emails
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 
 # Load environment variables
 load_dotenv()
@@ -59,32 +59,10 @@ else:
 
 print(f"Model and tokenizer have been saved to '{model_dir}'")
 
-
-def split_text(text, max_length):
-    # Split text by sentences based on delimiters
-    sentences = re.split(r'(?<=\.|,|;|"|!|\?)\s+', text)
-    
-    chunks = []
-    current_chunk = ""
-    current_length = 0
-
-    for sentence in sentences:
-        sentence_length = len(sentence)
-        
-        # Check if adding this sentence would exceed the max length
-        if current_length + sentence_length + 1 > max_length:  # +1 for space or delimiter
-            chunks.append(current_chunk.strip())
-            current_chunk = sentence
-            current_length = sentence_length
-        else:
-            current_chunk += (" " + sentence) if current_chunk else sentence
-            current_length += sentence_length + 1  # +1 for space or delimiter
-
-    # Add the last chunk
-    if current_chunk:
-        chunks.append(current_chunk.strip())
-
-    return chunks
+def split_text(text, max_length, tokenizer):
+    tokens = tokenizer.encode(text, add_special_tokens=False)
+    chunks = [tokens[i:i + max_length] for i in range(0, len(tokens), max_length)]
+    return [tokenizer.decode(chunk, skip_special_tokens=True) for chunk in chunks]
 
 # Translation functions
 def translate_text(sentences, src_lang, tgt_lang):
@@ -122,7 +100,6 @@ def translate_with_timing(text, source_lang, target_lang):
         translated_text = translate_text(text, source_lang, target_lang)
     return translated_text
 
-
 def remove_line(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
@@ -155,21 +132,33 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipie
     with open(local_file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
 
-    # Translate each non-empty line, preserving line breaks
-    translated_lines = []
-    for line in lines:
+    # Split lines into chunks and store their original positions
+    line_chunks = []
+    line_positions = []
+    for i, line in enumerate(lines):
         if not line.strip():
-            # Preserve empty lines
-            translated_lines.append("\n")
+            line_chunks.append(("\n", i))
         else:
-            # Translate non-empty lines
-            if len(line) > 512:
-                line_chunks = split_text(line, 512)
-                translated_chunks = [translate_with_timing(chunk, source_lang, target_lang) for chunk in line_chunks]
-                translated_lines.extend(translated_chunks)
-            else:
-                translated_lines.append(translate_with_timing(line, source_lang, target_lang) + "\n")
+            chunks = split_text(line, 512, tokenizer)
+            for chunk in chunks:
+                line_chunks.append((chunk, i))
     
+    # Translate chunks and store results in the correct position
+    translated_lines = [""] * len(lines)
+
+    def translate_chunk(chunk, pos):
+        translated_chunk = translate_with_timing(chunk, source_lang, target_lang) + "\n"
+        return translated_chunk, pos
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        future_to_position = {executor.submit(translate_chunk, chunk, pos): pos for chunk, pos in line_chunks}
+        for future in future_to_position:
+            translated_chunk, pos = future.result()
+            if translated_lines[pos] == "":
+                translated_lines[pos] = translated_chunk
+            else:
+                translated_lines[pos] += translated_chunk
+
     # Combine translated lines into content
     translated_content = "".join(translated_lines)
 
@@ -188,7 +177,6 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipie
     send_secure_email(email_subject, email_body, recipient_email, EMAIL, EMAIL_PASSWORD)
     print(f"Email sent to {recipient_email}")
 
-
 def upload_file_to_s3(file_name, bucket_name, object_name=None):
     if object_name is None:
         object_name = file_name
@@ -206,26 +194,41 @@ def upload_file_to_s3(file_name, bucket_name, object_name=None):
         return None
 
 def process_sqs_message():
-    def process_single_message(message_body):
-        s3_bucket = message_body['s3_bucket']
-        s3_key = message_body['s3_key']
-        source_lang = message_body['source_lang']
-        target_lang = message_body['target_lang']
-        unique_id = message_body['unique_id']
-        recipient_email = message_body['recipient_email']
-        print("Reading queue. Found translation task " + s3_key)
-        process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipient_email)
-
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        while True:
-            try:
-                time.sleep(2)
-                message_body = read_message_from_sqs()
-                if message_body:
-                    future = executor.submit(process_single_message, message_body)
-            except Exception as e:
-                print(f"An error occurred: {e}")
+    while True:
+        try:
+            time.sleep(2)
+            message_body = read_message_from_sqs()
+            if message_body:
+                s3_bucket = message_body['s3_bucket']
+                s3_key = message_body['s3_key']
+                source_lang = message_body['source_lang']
+                target_lang = message_body['target_lang']
+                unique_id = message_body['unique_id']
+                recipient_email = message_body['recipient_email']
+                print("Reading queue. Found translation task " + s3_key)
+                process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipient_email)
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
 # Function to read message from SQS
 def read_message_from_sqs():
-    response = sqs.receive
+    response = sqs.receive_message(
+        QueueUrl=SQS_QUEUE_URL,
+        AttributeNames=['All'],
+        MaxNumberOfMessages=1,
+        MessageAttributeNames=['All'],
+        VisibilityTimeout=30,
+        WaitTimeSeconds=0
+    )
+
+    if 'Messages' in response:
+        for message in response['Messages']:
+            body = message['Body']
+            receipt_handle = message['ReceiptHandle']
+            sqs.delete_message(QueueUrl=SQS_QUEUE_URL, ReceiptHandle=receipt_handle)
+            return json.loads(body)
+    return None
+
+# Start the conversion service
+if __name__ == "__main__":
+    process_sqs_message()
