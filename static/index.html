@@ -144,7 +144,7 @@
             formData.append('target_lang', document.getElementById('target_lang').value);
             formData.append('recipient_email', document.getElementById('recipient_email').value);
 
-            fetch('upload', {
+            fetch('https://web.booktranslate.uk/upload', {
                 method: 'POST',
                 body: formData
             })
