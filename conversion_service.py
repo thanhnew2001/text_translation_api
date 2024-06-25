@@ -139,7 +139,7 @@ def process_file(s3_bucket, s3_key, source_lang, target_lang, unique_id, recipie
         if not line.strip():
             line_chunks.append(("\n", i))
         else:
-            chunks = split_text(line, 512, tokenizer)
+            chunks = split_text(line, 400, tokenizer)
             for chunk in chunks:
                 line_chunks.append((chunk, i))
     
