@@ -246,12 +246,10 @@
         window.open(url, '_blank');
     }
 
-    
-    async function downloadAndAttach(bookId, bookTitle, url) {            
-        async function downloadAndAttach(bookId, bookTitle, url) {
-                const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`;
+           
+    async function downloadAndAttach(bookId, bookTitle, url) {
                 try {
-                    const response = await fetch(proxyUrl);
+                    const response = await fetch(url);
                     if (!response.ok) {
                         throw new Error('Network response was not ok ' + response.statusText);
                     }
@@ -274,7 +272,6 @@
                 }
             }
 
-        }
 
     //$("#translateModal").modal()
     function downloadVietnamese(bookId, bookTitle) {
