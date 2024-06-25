@@ -58,8 +58,8 @@
         <h1 class="mt-5">Book Translation</h1>
         <form id="uploadForm" enctype="multipart/form-data">
             <div class="mb-3">
-                <label for="file" class="form-label">Choose a file:</label>
-                <input type="file" class="form-control" id="file" name="file" required>
+                <label for="file" class="form-label">Choose a file .txt file:</label>
+                <input type="file" class="form-control" id="file" name="file" accept=".txt"  required>
             </div>
             <div class="mb-3">
                 <label for="source_lang" class="form-label">Source language:</label>
@@ -144,7 +144,7 @@
             formData.append('target_lang', document.getElementById('target_lang').value);
             formData.append('recipient_email', document.getElementById('recipient_email').value);
 
-            fetch('upload', {
+            fetch('https://web.booktranslate.uk/upload', {
                 method: 'POST',
                 body: formData
             })
