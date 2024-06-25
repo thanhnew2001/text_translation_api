@@ -248,28 +248,32 @@
 
     
     async function downloadAndAttach(bookId, bookTitle, url) {            
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok ' + response.statusText);
+        async function downloadAndAttach(bookId, bookTitle, url) {
+                const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`;
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+
+                    const text = await response.text();
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const file = new File([blob], `${bookId}_${bookTitle}.txt`, { type: 'text/plain' });
+
+                    // Create a DataTransfer object and add the file to it
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+
+                    // Attach the file to the file input
+                    const fileInput = document.getElementById('file');
+                    fileInput.files = dataTransfer.files;
+
+                    console.log('File downloaded and attached successfully');
+                } catch (error) {
+                    console.error('Error downloading or attaching the file:', error);
                 }
-                
-                const text = await response.text();
-                const blob = new Blob([text], { type: 'text/plain' });
-                const file = new File([blob], `${bookId}_${bookTitle}.txt`, { type: 'text/plain' });
-                
-                // Create a DataTransfer object and add the file to it
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(file);
-                
-                // Attach the file to the file input
-                const fileInput = document.getElementById('file');
-                fileInput.files = dataTransfer.files;
-                
-                console.log('File downloaded and attached successfully');
-            } catch (error) {
-                console.error('Error downloading or attaching the file:', error);
             }
+
         }
 
     //$("#translateModal").modal()
