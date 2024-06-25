@@ -307,7 +307,7 @@
         formData.append('target_lang','vi');
         formData.append('recipient_email', document.getElementById('recipient_email').value);
 
-        fetch('https://web.booktranslate.uk/upload', {
+        fetch('https://booktranslate.uk/upload', {
             method: 'POST',
             body: formData
         })
